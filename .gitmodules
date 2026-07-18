@@ -3,7 +3,7 @@
 	url = https://github.com/micropython/micropython
 [submodule "amy"]
 	path = amy
-	url = https://github.com/shorepine/amy
+	url = https://github.com/mateusz28011/amy
 [submodule "tinycc"]
 	path = tinycc
 	url = https://github.com/TinyCC/tinycc
