@@ -2,6 +2,7 @@
 
 from littlefs import lfs
 import os
+import subprocess
 import sys
 
 idf_path = os.environ["IDF_PATH"]  # get value of IDF_PATH from environment
@@ -34,6 +35,7 @@ with open(partition_table_file, 'rb') as f:
     partition_table = gen.PartitionTable.from_binary(f.read())
 vfs_partition = partition_table.find_by_name('vfs')
 sys_partition = partition_table.find_by_name('system')
+drums_partition = partition_table.find_by_name('drums')
 
 def copy_to_lfs(source, dest):
     #print("Copying %s to %s" % (source, dest))
@@ -83,10 +85,24 @@ with open("build/amyboard-sys.bin","wb") as fh:
 print("... done.")
 
 
+# Gamma9001 drum banks live in a raw partition that AMY mmaps at boot.
+subprocess.check_call([sys.executable, '-m', 'amy.headers', 'gamma9001'], cwd='../../amy')
+with open('../../amy/build/drums.bin', 'rb') as fh:
+    drums_bin = fh.read()
+if len(drums_bin) > drums_partition.size:
+    raise SystemExit("drums.bin (%d bytes) does not fit the drums partition (%d bytes)"
+                     % (len(drums_bin), drums_partition.size))
+with open('build/amyboard-drums.bin', 'wb') as fh:
+    fh.write(drums_bin)
+print("drums.bin: %d bytes into drums partition at %s" % (
+    len(drums_bin), hex(drums_partition.offset)))
+
+
 # Update the flash_args file to have the sys and user partitions
 flash_args = open('build/flash_args','r').read().split('\n')[:-1]
 flash_args.append('%s amyboard-sys.bin' % (hex(sys_partition.offset)))
 flash_args.append('%s amyboard-vfs.bin' % (hex(vfs_partition.offset)))
+flash_args.append('%s amyboard-drums.bin' % (hex(drums_partition.offset)))
 new_flash_args = open('build/flash_args_amyboard','w')
 for f in flash_args:
     new_flash_args.write('%s\n' % (f))
